@@ -1,0 +1,3 @@
+alibabacloud-ice20201109>=1.0.0
+alibabacloud-oss20190517>=1.0.0
+alibabacloud-tea-openapi>=1.0.0 
