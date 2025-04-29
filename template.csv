@@ -1,0 +1,3 @@
+opening_video, opening_text, transition_image, transition_text , main_video     , subtitle_text           , ending_video
+opening.mp4  , 欢迎观看    , transition.jpg  , 精彩内容即将开始, main_video1.mp4, 这是第一个视频的字幕内容, ending.mp4
+opening.mp4  , 精彩回顾    , transition.jpg  , 更多精彩内容    , main_video2.mp4, 这是第二个视频的字幕内容, ending.mp4
