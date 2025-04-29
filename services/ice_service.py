@@ -18,11 +18,11 @@ class ICEService:
             print(f"创建工作流失败: {e}")
             return None
 
-    def execute_workflow_task(self, workflow_id, parameters):
+    def do_workflow_task(self, workflow_id, parameters):
         """执行工作流任务"""
         try:
-            response = self.client.execute_workflow_task(
-                WorkflowId=workflow_id,
+            response = self.client.submit_media_producing_job(
+                # WorkflowId=workflow_id,
                 InputParameters=parameters
             )
             return response.body

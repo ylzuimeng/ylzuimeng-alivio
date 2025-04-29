@@ -4,6 +4,7 @@ from configparser import ConfigParser
 from alibabacloud_ice20201109.client import Client
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_oss20190517.client import Client as OSSClient
+from alibabacloud_ice20201109 import models as ice_models
 from concurrent.futures import ThreadPoolExecutor
 import time
 import tkinter as tk
@@ -16,11 +17,12 @@ def create_workflow(access_key_id, access_key_secret, region):
     """
     创建自定义视频剪辑工作流
     """
-    client = Client(open_api_models.Config(
+    config = open_api_models.Config(
         access_key_id=access_key_id,
         access_key_secret=access_key_secret,
         endpoint=f'ice.{region}.aliyuncs.com'
-    ))
+    )
+    client = Client(config)
 
     workflow = {
         "Name": "custom-video-workflow",
@@ -72,15 +74,19 @@ def create_workflow(access_key_id, access_key_secret, region):
     }
 
     try:
-        # 假设存在对应的创建工作流接口
-        response = client.create_workflow(workflow=workflow)
-        return response.body.get('WorkflowId')
+        # 使用正确的API方法名和请求模型
+        request = ice_models.CreateMediaProducingTemplateRequest(
+            template=workflow
+        )
+        response = client.create_media_producing_template(request)
+        print(response.body.get('TemplateId'))
+        return response.body.get('TemplateId')
     except Exception as e:
         print(f"创建工作流失败: {e}")
         return None
 
 
-def execute_workflow_task(client, workflow_id, input_bucket, task_params):
+def execute_workflow_task(client, template_id, input_bucket, task_params):
     """
     触发单个工作流任务
     """
@@ -104,11 +110,12 @@ def execute_workflow_task(client, workflow_id, input_bucket, task_params):
     }
 
     try:
-        # 假设存在对应的执行工作流任务接口
-        response = client.execute_workflow_task(
-            WorkflowId=workflow_id,
-            InputParameters=parameters
+        # 使用正确的API方法名和请求模型
+        request = ice_models.SubmitMediaProducingJobRequest(
+            template_id=template_id,
+            parameters=parameters
         )
+        response = client.submit_media_producing_job(request)
         return {
             "task": task_params,
             "job_id": response.body["JobId"],
@@ -124,8 +131,11 @@ def check_job_status(client, job_id):
     检查工作流任务状态
     """
     try:
-        # 假设存在对应的获取任务状态接口
-        response = client.get_workflow_task_status(JobId=job_id)
+        # 使用正确的API方法名和请求模型
+        request = ice_models.GetMediaProducingJobRequest(
+            job_id=job_id
+        )
+        response = client.get_media_producing_job(request)
         return response.body["Status"]
     except Exception as e:
         print(f"检查任务 {job_id} 状态失败: {e}")
@@ -187,25 +197,27 @@ def run_process():
         region = region_entry.get()
         input_bucket = input_bucket_entry.get()
         output_bucket = output_bucket_entry.get()
-        workflow_id = workflow_id_entry.get()
+        template_id = workflow_id_entry.get()
 
-        if not workflow_id:
-            messagebox.showerror("错误", "请填写Workflow ID（可在阿里云ICE控制台获取）")
+        if not template_id:
+            messagebox.showerror("错误", "请填写Template ID（可在阿里云ICE控制台获取）")
             return
 
         # 初始化 ICE 客户端
-        ice_client = Client(open_api_models.Config(
+        config = open_api_models.Config(
             access_key_id=access_key_id,
             access_key_secret=access_key_secret,
             endpoint=f'ice.{region}.aliyuncs.com'
-        ))
+        )
+        ice_client = Client(config)
 
         # 初始化 OSS 客户端
-        oss_client = OSSClient(open_api_models.Config(
+        oss_config = open_api_models.Config(
             access_key_id=access_key_id,
             access_key_secret=access_key_secret,
             endpoint=f'oss-{region}.aliyuncs.com'
-        ))
+        )
+        oss_client = OSSClient(oss_config)
 
         # 选择任务文件
         task_file = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -219,7 +231,7 @@ def run_process():
             tasks = list(reader)
 
         with ThreadPoolExecutor(max_workers=10) as executor:  # 控制并发数
-            results = list(executor.map(lambda task: execute_workflow_task(ice_client, workflow_id, input_bucket, task), tasks))
+            results = list(executor.map(lambda task: execute_workflow_task(ice_client, template_id, input_bucket, task), tasks))
             results = [result for result in results if result]
 
         messagebox.showinfo("信息", f"批量提交 {len(results)} 个任务，任务ID列表：{[r['job_id'] for r in results]}")

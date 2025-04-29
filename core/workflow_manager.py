@@ -9,7 +9,7 @@ class WorkflowManager:
         self.ice_service = ice_service
         self.oss_service = oss_service
 
-    def execute_workflow_task(self, workflow_id, input_bucket, task_params):
+    def do_workflow_task(self, workflow_id, input_bucket, task_params):
         """执行单个工作流任务"""
         try:
             # 构造工作流参数
@@ -23,7 +23,7 @@ class WorkflowManager:
                 "ending_video": f"oss://{input_bucket}/{task_params['ending_video']}"
             }
 
-            response = self.ice_service.execute_workflow_task(workflow_id, parameters)
+            response = self.ice_service.do_workflow_task(workflow_id, parameters)
             return {
                 "task": task_params,
                 "job_id": response["JobId"],
@@ -42,7 +42,7 @@ class WorkflowManager:
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             results = list(executor.map(
-                lambda task: self.execute_workflow_task(workflow_id, input_bucket, task),
+                lambda task: self.do_workflow_task(workflow_id, input_bucket, task),
                 tasks
             ))
             results = [result for result in results if result]
