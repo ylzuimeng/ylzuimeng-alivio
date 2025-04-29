@@ -1,71 +1,28 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import ttk
 from config.config_manager import ConfigManager
 from core.workflow_manager import WorkflowManager
 from services.ice_service import ICEService
 from services.oss_service import OSSService
 import os
+from ui.upload_panel import UploadPanel
+from ui.log_panel import LogPanel
+from ui.download_panel import DownloadPanel
 
 class MainWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("阿里云视频处理程序")
+        self.notebook = ttk.Notebook(self.root)
         self.config_manager = ConfigManager()
-        self.setup_ui()
-        self.load_config()
-
-    def setup_ui(self):
-        """设置UI界面"""
-        # 居中显示窗口
-        window_width = 900
-        window_height = 600
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-        # 配置参数输入框
-        label_font = ("Arial", 18)
-        entry_font = ("Arial", 18)
-        button_font = ("Arial", 18)
-
-        self.entries = {}
-        row = 0
-        fields = [
-            ("Access Key ID:", "access_key_id"),
-            ("Access Key Secret:", "access_key_secret"),
-            ("Region:", "region"),
-            ("Input Bucket:", "input_bucket"),
-            ("Output Bucket:", "output_bucket"),
-            ("Workflow ID:", "workflow_id")
-        ]
-
-        for label_text, field_name in fields:
-            tk.Label(self.root, text=label_text, font=label_font).grid(
-                row=row, column=0, sticky='e', padx=30, pady=15)
-            
-            entry = tk.Entry(self.root, font=entry_font, width=40)
-            if field_name == "access_key_secret":
-                entry.config(show='*')
-            entry.grid(row=row, column=1, sticky='w', padx=30, pady=15)
-            self.entries[field_name] = entry
-            row += 1
-
-        # 创建按钮
-        run_button = tk.Button(
-            self.root, text="运行处理流程", 
-            command=self.run_process, 
-            font=button_font, width=20, height=2
-        )
-        run_button.grid(row=row, column=0, columnspan=2, pady=20)
-
-        upload_button = tk.Button(
-            self.root, text="上传文件到输入Bucket", 
-            command=self.upload_files_to_oss, 
-            font=button_font, width=20, height=2
-        )
-        upload_button.grid(row=row+1, column=0, columnspan=2, pady=20)
+        self.upload_panel = UploadPanel(self.notebook, oss_service=None)
+        self.log_panel = LogPanel(self.notebook)
+        self.download_panel = DownloadPanel(self.notebook, oss_service=None)
+        self.notebook.add(self.upload_panel, text="上传")
+        self.notebook.add(self.log_panel, text="日志")
+        self.notebook.add(self.download_panel, text="下载")
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        self.root.mainloop()
 
     def load_config(self):
         """加载配置"""
@@ -92,9 +49,9 @@ class MainWindow:
             workflow_manager = WorkflowManager(ice_service, oss_service)
 
             # 选择任务文件
-            task_file = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+            task_file = tk.filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
             if not task_file:
-                messagebox.showerror("错误", "未选择任务文件。")
+                tk.messagebox.showerror("错误", "未选择任务文件。")
                 return
 
             # 执行任务
@@ -105,7 +62,7 @@ class MainWindow:
                 task_file
             )
 
-            messagebox.showinfo(
+            tk.messagebox.showinfo(
                 "信息", 
                 f"批量提交 {len(results)} 个任务，任务ID列表：{[r['job_id'] for r in results]}"
             )
@@ -114,18 +71,18 @@ class MainWindow:
             workflow_manager.monitor_tasks(results, config['output_bucket'])
 
         except Exception as e:
-            messagebox.showerror("错误", f"执行过程中出现错误: {e}")
+            tk.messagebox.showerror("错误", f"执行过程中出现错误: {e}")
 
     def upload_files_to_oss(self):
         """上传文件到OSS"""
         try:
             config = self.config_manager.get_config()
             if not all(config.get(key) for key in ['access_key_id', 'access_key_secret', 'region', 'input_bucket']):
-                messagebox.showerror("错误", "请先填写Access Key、Secret、Region和Input Bucket")
+                tk.messagebox.showerror("错误", "请先填写Access Key、Secret、Region和Input Bucket")
                 return
 
             # 选择文件
-            file_paths = filedialog.askopenfilenames(title="选择要上传的文件")
+            file_paths = tk.filedialog.askopenfilenames(title="选择要上传的文件")
             if not file_paths:
                 return
 
@@ -141,11 +98,7 @@ class MainWindow:
                 if oss_service.upload_file(config['input_bucket'], file_name, file_path):
                     success_count += 1
 
-            messagebox.showinfo("成功", f"成功上传 {success_count} 个文件到 {config['input_bucket']}")
+            tk.messagebox.showinfo("成功", f"成功上传 {success_count} 个文件到 {config['input_bucket']}")
 
         except Exception as e:
-            messagebox.showerror("错误", f"上传文件时出错: {e}")
-
-    def run(self):
-        """运行主程序"""
-        self.root.mainloop() 
+            tk.messagebox.showerror("错误", f"上传文件时出错: {e}") 
