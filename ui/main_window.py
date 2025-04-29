@@ -48,6 +48,10 @@ class MainWindow:
             entry = tk.Entry(self.root, font=entry_font, width=40)
             if field_name == "access_key_secret":
                 entry.config(show='*')
+            
+            # 添加输入变化监听
+            entry.bind('<KeyRelease>', lambda e, field=field_name: self.on_entry_change(field))
+            
             entry.grid(row=row, column=1, sticky='w', padx=30, pady=15)
             self.entries[field_name] = entry
             row += 1
@@ -67,9 +71,39 @@ class MainWindow:
         )
         upload_button.grid(row=row+1, column=0, columnspan=2, pady=20)
 
+        # 添加状态标签
+        self.status_label = tk.Label(
+            self.root, 
+            text="", 
+            font=("Arial", 12),
+            fg="green"
+        )
+        self.status_label.grid(row=row+2, column=0, columnspan=2, pady=10)
+
+    def on_entry_change(self, field_name):
+        """当输入框内容变化时自动保存配置"""
+        try:
+            self.config_manager.save_config_from_ui(self.entries)
+            self.show_status(f"配置已自动保存")
+        except Exception as e:
+            self.show_status(f"保存配置失败: {str(e)}", is_error=True)
+
+    def show_status(self, message, is_error=False):
+        """显示状态信息"""
+        self.status_label.config(
+            text=message,
+            fg="red" if is_error else "green"
+        )
+        # 3秒后清除状态信息
+        self.root.after(3000, lambda: self.status_label.config(text=""))
+
     def load_config(self):
         """加载配置"""
-        self.config_manager.load_config_to_ui(self.entries)
+        try:
+            self.config_manager.load_config_to_ui(self.entries)
+            self.show_status("配置已加载")
+        except Exception as e:
+            self.show_status(f"加载配置失败: {str(e)}", is_error=True)
 
     def run_process(self):
         """运行处理流程"""
